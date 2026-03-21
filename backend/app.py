@@ -40,11 +40,14 @@ def program_detail(pid):
 @app.route("/api/trigger-scrape", methods=["POST"])
 def trigger_scrape():
     """Manual one-off scrape (protected by a secret header)."""
+    import threading
     secret = request.headers.get("X-Scrape-Secret", "")
     if secret != os.environ.get("SCRAPE_SECRET", ""):
         return jsonify({"error": "Unauthorized"}), 401
-    results = run_full_scrape()
-    return jsonify({"scraped": results})
+    thread = threading.Thread(target=run_full_scrape)
+    thread.daemon = True
+    thread.start()
+    return jsonify({"status": "Scrape started in background"})
 
 
 @app.route("/api/trigger-gmail", methods=["POST"])

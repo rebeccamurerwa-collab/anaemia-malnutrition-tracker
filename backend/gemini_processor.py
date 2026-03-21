@@ -9,7 +9,7 @@ import re
 import google.generativeai as genai
 
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-2.0-flash")
 
 EXTRACTION_PROMPT = """
 You are an expert policy analyst specialising in nutrition and public health programs in India. Always respond in English, translating any Hindi or other language content to English.
