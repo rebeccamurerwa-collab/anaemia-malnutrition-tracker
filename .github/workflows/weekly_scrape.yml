@@ -1,0 +1,25 @@
+name: Weekly PIB Scrape
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:    # allow manual trigger from GitHub UI
+
+jobs:
+  trigger-scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend scrape endpoint
+        run: |
+          curl -X POST \
+            -H "X-Scrape-Secret: ${{ secrets.SCRAPE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.BACKEND_URL }}/api/trigger-scrape"
+
+      - name: Ping backend Gmail endpoint
+        run: |
+          curl -X POST \
+            -H "X-Scrape-Secret: ${{ secrets.SCRAPE_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.BACKEND_URL }}/api/trigger-gmail"

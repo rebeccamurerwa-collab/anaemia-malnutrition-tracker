@@ -1,0 +1,87 @@
+import os
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from database import init_db, get_all_programs, get_program_by_id, upsert_program
+from scraper import run_full_scrape
+from gmail_reader import fetch_gmail_alerts
+from scheduler import start_scheduler
+
+app = Flask(__name__)
+CORS(app)
+
+# ── DB init ──────────────────────────────────────────────────────────────────
+init_db()
+
+# ── Scheduler (weekly) ───────────────────────────────────────────────────────
+start_scheduler()
+
+
+# ── API Routes ────────────────────────────────────────────────────────────────
+
+@app.route("/api/programs", methods=["GET"])
+def programs():
+    ministry   = request.args.get("ministry")
+    scope      = request.args.get("scope")       # central | state
+    status     = request.args.get("status")      # active | proposed
+    state_name = request.args.get("state")
+    rows = get_all_programs(ministry=ministry, scope=scope,
+                             status=status, state_name=state_name)
+    return jsonify(rows)
+
+
+@app.route("/api/programs/<int:pid>", methods=["GET"])
+def program_detail(pid):
+    row = get_program_by_id(pid)
+    if not row:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(row)
+
+
+@app.route("/api/trigger-scrape", methods=["POST"])
+def trigger_scrape():
+    """Manual one-off scrape (protected by a secret header)."""
+    secret = request.headers.get("X-Scrape-Secret", "")
+    if secret != os.environ.get("SCRAPE_SECRET", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+    results = run_full_scrape()
+    return jsonify({"scraped": results})
+
+
+@app.route("/api/trigger-gmail", methods=["POST"])
+def trigger_gmail():
+    secret = request.headers.get("X-Scrape-Secret", "")
+    if secret != os.environ.get("SCRAPE_SECRET", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+    count = fetch_gmail_alerts()
+    return jsonify({"processed": count})
+
+
+@app.route("/api/stats", methods=["GET"])
+def stats():
+    rows = get_all_programs()
+    ministries = {}
+    scopes     = {"central": 0, "state": 0}
+    statuses   = {"active": 0, "proposed": 0, "unknown": 0}
+    for r in rows:
+        m = r.get("ministry", "Unknown")
+        ministries[m] = ministries.get(m, 0) + 1
+        s = r.get("scope", "central")
+        scopes[s] = scopes.get(s, 0) + 1
+        st = r.get("status", "unknown")
+        statuses[st] = statuses.get(st, 0) + 1
+    return jsonify({
+        "total": len(rows),
+        "by_ministry": ministries,
+        "by_scope": scopes,
+        "by_status": statuses,
+    })
+
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.env
+venv/
+env/
+backend/token.json
+backend/credentials.json
+backend/programs.db
+*.db
+node_modules/
+frontend/dist/
+frontend/.env
+.DS_Store
+Thumbs.db
