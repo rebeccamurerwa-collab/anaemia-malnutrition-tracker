@@ -1,18 +1,18 @@
 """
-Uses Google Gemini Flash to extract structured program data
+Uses Groq (free) to extract structured program data
 from raw PIB press-release text or Gmail alert snippets.
 """
 
 import os
 import json
 import re
-import google.generativeai as genai
+from groq import Groq
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-2.0-flash")
+client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 EXTRACTION_PROMPT = """
-You are an expert policy analyst specialising in nutrition and public health programs in India. Always respond in English, translating any Hindi or other language content to English.
+You are an expert policy analyst specialising in nutrition and public health programs in India.
+Always respond in English, translating any Hindi or other language content to English.
 
 Given the press release title, body text, and source ministry below, extract ALL anaemia and malnutrition-related programs or schemes mentioned.
 
@@ -29,14 +29,14 @@ Return a JSON array. Each element must have these fields (use null if not found)
     ["IFA supplementation", "deworming", "cash transfers", "mid-day meals",
      "take-home rations", "food fortification", "behaviour change communication",
      "POSHAN Tracker", "anganwadi services", "conditional cash transfer"]
-- "summary": string — 2–3 sentence plain-language summary of the program
+- "summary": string — 2-3 sentence plain-language summary of the program in English
 - "source_url": string — as provided
 
 Important rules:
 - Only include programs related to anaemia, malnutrition, nutrition, food security, or micronutrient deficiency.
 - If the press release is about a completely unrelated topic, return an empty array [].
 - Do not invent data. Use null for missing fields.
-- Return valid JSON only, no markdown fences.
+- Return valid JSON only, no markdown fences, no extra text.
 
 ---
 MINISTRY: {ministry}
@@ -56,20 +56,25 @@ def extract_program_info(
     source_url: str,
 ) -> list[dict]:
     """
-    Call Gemini to extract structured program records from press release text.
+    Call Groq to extract structured program records from press release text.
     Returns a list of program dicts (may be empty).
     """
     prompt = EXTRACTION_PROMPT.format(
         ministry=ministry,
         source_url=source_url,
         title=title,
-        body=body[:5000],          # stay within token limits
+        body=body[:5000],
     )
     try:
-        response = model.generate_content(prompt)
-        raw = response.text.strip()
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=2000,
+        )
+        raw = response.choices[0].message.content.strip()
 
-        # Strip markdown fences if Gemini adds them despite instructions
+        # Strip markdown fences if present
         raw = re.sub(r"^```(?:json)?\s*", "", raw)
         raw = re.sub(r"\s*```$", "", raw)
 
@@ -80,8 +85,8 @@ def extract_program_info(
             return [data]
         return []
     except json.JSONDecodeError as e:
-        print(f"[gemini] JSON parse error: {e}\nRaw: {raw[:300]}")
+        print(f"[groq] JSON parse error: {e}")
         return []
     except Exception as e:
-        print(f"[gemini] API error: {e}")
+        print(f"[groq] API error: {e}")
         return []
