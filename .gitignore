@@ -12,3 +12,4 @@ frontend/dist/
 frontend/.env
 .DS_Store
 Thumbs.db
+backend/test_*.py

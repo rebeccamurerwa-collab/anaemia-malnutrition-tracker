@@ -1,5 +1,5 @@
 import os
-os.environ["GROQ_API_KEY"] = "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"
+os.environ["GROQ_API_KEY"] = "your_groq_key_here"
 
 from gemini_processor import extract_program_info
 
