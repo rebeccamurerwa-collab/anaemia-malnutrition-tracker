@@ -11,3 +11,4 @@ for prid in ["2243376", "2243248", "2243362"]:
     matched = [k for k in KEYWORDS if k in text.lower()]
     print(f"\nPRID {prid}: {r['title'][:60]}")
     print(f"MATCHED KEYWORDS: {matched}")
+
