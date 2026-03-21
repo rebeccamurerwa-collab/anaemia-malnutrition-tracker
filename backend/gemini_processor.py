@@ -12,7 +12,7 @@ genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 EXTRACTION_PROMPT = """
-You are an expert policy analyst specialising in nutrition and public health programs in India.
+You are an expert policy analyst specialising in nutrition and public health programs in India. Always respond in English, translating any Hindi or other language content to English.
 
 Given the press release title, body text, and source ministry below, extract ALL anaemia and malnutrition-related programs or schemes mentioned.
 
