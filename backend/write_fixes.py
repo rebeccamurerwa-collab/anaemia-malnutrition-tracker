@@ -1,4 +1,8 @@
 import os
+base = r"C:\Users\rebec\OneDrive\Documents\anaemia-malnutrition-tracker\backend"
+
+# ── gemini_processor.py (tighter prompt) ─────────────────────────────────────
+processor = '''import os
 import json
 import re
 from groq import Groq
@@ -87,8 +91,8 @@ def extract_program_info(title, body, ministry, source_url):
             max_tokens=2000,
         )
         raw = response.choices[0].message.content.strip()
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
+        raw = re.sub(r"^```(?:json)?\\s*", "", raw)
+        raw = re.sub(r"\\s*```$", "", raw)
         data = json.loads(raw)
         if isinstance(data, list):
             return data
@@ -101,3 +105,69 @@ def extract_program_info(title, body, ministry, source_url):
     except Exception as e:
         print(f"[groq] API error: {e}")
         return []
+'''
+
+# ── app.py cleanup endpoint ───────────────────────────────────────────────────
+# We also need a cleanup endpoint to remove bad programs already in the DB
+cleanup_route = '''
+@app.route("/api/cleanup", methods=["POST"])
+def cleanup():
+    secret = request.headers.get("X-Scrape-Secret", "")
+    if secret != os.environ.get("SCRAPE_SECRET", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+    from database import _conn
+    # Remove programs that are clearly not nutrition/anaemia focused
+    bad_programs = [
+        "Mission Indradhanush",
+        "Ayushman Bharat",
+        "National Rural Health Mission",
+        "PM-ARKVY",
+        "National Tuberculosis Elimination Programme, Anaemia Mukt Bharat, and Vaccination Programme",
+        "Niyota Bhoj Program",
+    ]
+    removed = 0
+    # Remove near-duplicates - keep best version
+    duplicates_to_remove = [
+        "Poshan Abhiyan",
+        "POSHAN Mission",
+        "Nutrition Mission",
+        "Niyota Bhoj Program",
+    ]
+    try:
+        with _conn() as c:
+            if hasattr(c, "cursor"):
+                cur = c.cursor()
+                for name in bad_programs + duplicates_to_remove:
+                    cur.execute("DELETE FROM programs WHERE program_name = %s", (name,))
+                    removed += cur.rowcount
+                c.commit()
+                cur.close()
+            else:
+                for name in bad_programs + duplicates_to_remove:
+                    c.execute("DELETE FROM programs WHERE program_name = ?", (name,))
+                    removed += c.execute("SELECT changes()").fetchone()[0]
+                c.commit()
+        return jsonify({"removed": removed})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+'''
+
+with open(os.path.join(base, "gemini_processor.py"), "w", encoding="utf-8") as f:
+    f.write(processor.strip())
+print("gemini_processor.py written!")
+
+# Read existing app.py and add cleanup route before health route
+app_path = os.path.join(base, "app.py")
+with open(app_path, "r", encoding="utf-8") as f:
+    app_content = f.read()
+
+if "/api/cleanup" not in app_content:
+    app_content = app_content.replace(
+        '@app.route("/api/health"',
+        cleanup_route + '\n\n@app.route("/api/health"'
+    )
+    with open(app_path, "w", encoding="utf-8") as f:
+        f.write(app_content)
+    print("app.py updated with cleanup endpoint!")
+else:
+    print("app.py already has cleanup endpoint, skipping.")

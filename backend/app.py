@@ -110,6 +110,49 @@ def seed():
         return jsonify({"seeded": count})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/cleanup", methods=["POST"])
+def cleanup():
+    secret = request.headers.get("X-Scrape-Secret", "")
+    if secret != os.environ.get("SCRAPE_SECRET", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+    from database import _conn
+    # Remove programs that are clearly not nutrition/anaemia focused
+    bad_programs = [
+        "Mission Indradhanush",
+        "Ayushman Bharat",
+        "National Rural Health Mission",
+        "PM-ARKVY",
+        "National Tuberculosis Elimination Programme, Anaemia Mukt Bharat, and Vaccination Programme",
+        "Niyota Bhoj Program",
+    ]
+    removed = 0
+    # Remove near-duplicates - keep best version
+    duplicates_to_remove = [
+        "Poshan Abhiyan",
+        "POSHAN Mission",
+        "Nutrition Mission",
+        "Niyota Bhoj Program",
+    ]
+    try:
+        with _conn() as c:
+            if hasattr(c, "cursor"):
+                cur = c.cursor()
+                for name in bad_programs + duplicates_to_remove:
+                    cur.execute("DELETE FROM programs WHERE program_name = %s", (name,))
+                    removed += cur.rowcount
+                c.commit()
+                cur.close()
+            else:
+                for name in bad_programs + duplicates_to_remove:
+                    c.execute("DELETE FROM programs WHERE program_name = ?", (name,))
+                    removed += c.execute("SELECT changes()").fetchone()[0]
+                c.commit()
+        return jsonify({"removed": removed})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
