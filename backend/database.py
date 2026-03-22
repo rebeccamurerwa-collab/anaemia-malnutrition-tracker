@@ -15,7 +15,7 @@ if DATABASE_URL:
     import psycopg2.extras
 
     def _conn():
-        return psycopg2.connect(DATABASE_URL, sslmode="require")
+        return psycopg2.connect(DATABASE_URL, sslmode="prefer")
 
     def init_db():
         with _conn() as c:
