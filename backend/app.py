@@ -37,14 +37,6 @@ def new_programs():
     new = [r for r in rows if r.get("created_at", "") >= week_ago]
     return jsonify(new)
 
-@app.route("/api/programs/new", methods=["GET"])
-def new_programs():
-    from datetime import datetime, timedelta
-    rows = get_all_programs()
-    week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
-    new = [r for r in rows if r.get("created_at", "") >= week_ago]
-    return jsonify(new)
-
 @app.route("/api/programs/<int:pid>", methods=["GET"])
 def program_detail(pid):
     row = get_program_by_id(pid)
