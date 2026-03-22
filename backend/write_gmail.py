@@ -1,4 +1,7 @@
 import os
+base = r"C:\Users\rebec\OneDrive\Documents\anaemia-malnutrition-tracker\backend"
+
+gmail = '''import os
 import base64
 import re
 from google.oauth2.credentials import Credentials
@@ -45,8 +48,8 @@ def _extract_alert_text(html_body):
     soup = BeautifulSoup(html_body, "html.parser")
     articles = soup.find_all("article") or soup.find_all("td", class_=re.compile("article"))
     if articles:
-        return "\n\n".join(a.get_text(separator=" ", strip=True) for a in articles)
-    return soup.get_text(separator="\n", strip=True)[:5000]
+        return "\\n\\n".join(a.get_text(separator=" ", strip=True) for a in articles)
+    return soup.get_text(separator="\\n", strip=True)[:5000]
 
 
 def fetch_gmail_alerts():
@@ -104,3 +107,8 @@ def fetch_gmail_alerts():
 
     print(f"[gmail] {count} program records extracted from alerts")
     return count
+'''
+
+with open(os.path.join(base, "gmail_reader.py"), "w", encoding="utf-8") as f:
+    f.write(gmail.strip())
+print("gmail_reader.py written!")
