@@ -95,13 +95,9 @@ def fetch_gmail_alerts() -> int:
             userId="me", id=msg_ref["id"], format="full"
         ).execute()
 
-        # Check subject relevance
         headers = {h["name"]: h["value"]
                    for h in msg["payload"].get("headers", [])}
-        subject = headers.get("Subject", "").lower()
-        if not any(k in subject for k in SUBJECT_KEYWORDS):
-            continue
-
+        subject = headers.get("Subject", "")
         body_html = _decode_body(msg["payload"])
         text = _extract_alert_text(body_html)
         if not text:
