@@ -1,4 +1,4 @@
-import { useState } from "react";
+content = '''import { useState } from "react";
 
 const STATUS_COLORS = {
   active:       { bg: "#e6f4f1", text: "#0097a7", border: "#0097a7" },
@@ -63,3 +63,9 @@ export default function ProgramCard({ program: p }) {
     </div>
   );
 }
+'''
+
+with open(r"C:\Users\rebec\OneDrive\Documents\anaemia-malnutrition-tracker\frontend\src\components\ProgramCard.jsx", "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("Done!")
