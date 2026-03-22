@@ -1,202 +1,129 @@
-"""
-PIB scraper — uses RSS feeds to get PRIDs, then fetches
-each press release via PressReleasePage.aspx?PRID=...
-"""
-
-import re
+import os
 import time
 import requests
 from bs4 import BeautifulSoup
 from gemini_processor import extract_program_info
 from database import upsert_program
 
-BASE_URL = "https://pib.gov.in"
-
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Referer": "https://pib.gov.in/",
-}
-
-MINISTRY_MAP = {
-    "25": "Ministry of Health and Family Welfare (MoHFW)",
-    "36": "Ministry of Consumer Affairs, Food & Public Distribution (MoCAFPD)",
-    "56": "Ministry of Women and Child Development (MoWCD)",
-    "16": "Ministry of Education (MoE)",
-    "53": "Ministry of Tribal Affairs (MoTA)",
-    "27": "NITI Aayog",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
 KEYWORDS = [
-    # English
-    "anaemia", "anemia", "malnutrition", "nutrition",
-    # Hindi
-    "एनीमिया", "रक्ताल्पता", "कुपोषण", "पोषण",
+    "anaemia", "anemia", "malnutrition", "nutrition", "poshan",
+    "anganwadi", "icds", "stunting", "wasting",
+    "mid-day meal", "midday meal", "food security",
+    "iron deficiency", "folic acid", "ifa supplementation",
+    "micronutrient", "food fortification", "supplementary nutrition",
+    "take home ration", "therapeutic food", "acute malnutrition",
+    "poshan abhiyaan", "anaemia mukt", "rashtriya poshan",
+    "child nutrition", "maternal nutrition", "infant nutrition",
 ]
 
+PROCESSED_FILE = "processed_relids.txt"
 
-def _is_relevant(text: str) -> bool:
+RELID_RANGES = [
+    (1000,   50000,  50),
+    (50000,  100000, 50),
+    (100000, 150000, 30),
+    (150000, 200000, 20),
+    (200000, 250000, 10),
+    (250000, 286000, 5),
+]
+
+WEEKLY_RANGE = (285000, 286000, 1)
+
+def _is_relevant(text):
     t = text.lower()
     return any(k in t for k in KEYWORDS)
 
+def _load_processed():
+    if not os.path.exists(PROCESSED_FILE):
+        return set()
+    with open(PROCESSED_FILE, "r") as f:
+        return set(int(line.strip()) for line in f if line.strip())
 
-def _extract_prids_from_rss(min_code: str) -> list[str]:
-    """
-    Fetch RSS feed for a ministry and extract all PRIDs from URLs.
-    Returns list of PRID strings.
-    """
-    url = (
-        f"https://pib.gov.in/RssMain.aspx"
-        f"?ModId=6&Lang=1&Regid=3&MinCode={min_code}"
-    )
+def _save_processed(relid):
+    with open(PROCESSED_FILE, "a") as f:
+        f.write(str(relid) + "\n")
+
+def fetch_print_release(relid):
+    url = f"https://pib.gov.in/newsite/PrintRelease.aspx?relid={relid}"
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=20)
-        # Parse as XML using lxml
-        soup = BeautifulSoup(resp.content, features="xml")
-        
-        prids = set()
-        
-        # Extract PRIDs from all links in the RSS
-        for tag in soup.find_all(["link", "guid", "description", "title"]):
-            text = tag.get_text()
-            # Find PRID= patterns in URLs
-            matches = re.findall(r"PRID=(\d+)", text)
-            prids.update(matches)
-        
-        # Also search raw text for PRID patterns
-        raw_matches = re.findall(r"PRID=(\d+)", resp.text)
-        prids.update(raw_matches)
-        
-        print(f"[scraper]   Found {len(prids)} PRIDs in RSS for ministry {min_code}")
-        return list(prids)
-    except Exception as e:
-        print(f"[scraper] RSS error for ministry {min_code}: {e}")
-        return []
-
-
-def _fetch_press_release(prid: str) -> dict:
-    """
-    Fetch full text of a press release by PRID.
-    Returns dict with title and body.
-    """
-    url = f"https://pib.gov.in/PressReleasePage.aspx?PRID={prid}"
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=20)
+        resp = requests.get(url, headers=HEADERS, timeout=15)
+        if resp.status_code != 200:
+            return None
         soup = BeautifulSoup(resp.text, "html.parser")
-        
-        # Get title
-        title = ""
-        for sel in ["h2", "h1", "title", ".release-title"]:
-            t = soup.select_one(sel)
-            if t and len(t.get_text(strip=True)) > 10:
-                title = t.get_text(strip=True)
-                break
-        
-        # Get body — try multiple selectors
-        body = ""
-        for selector in [
-            "div.innner-page-content",
-            "div#ContentPlaceHolder1_lblContentDetail",
-            "div.content-area",
-            "div.press-content",
-            "div#content",
-            "article",
-        ]:
-            content = soup.select_one(selector)
-            if content:
-                text = content.get_text(separator="\n", strip=True)
-                if len(text) > 200:
-                    body = text[:6000]
-                    break
-        
-        # Fallback: get all paragraphs
-        if not body:
-            paras = soup.find_all("p")
-            body = "\n".join(p.get_text(strip=True) for p in paras
-                           if len(p.get_text(strip=True)) > 20)[:6000]
-        
-        return {"title": title, "body": body, "url": url, "prid": prid}
+        paras = [p.get_text(strip=True) for p in soup.find_all('p')
+                 if len(p.get_text(strip=True)) > 30]
+        if not paras:
+            return None
+        text = " ".join(paras)
+        if len(text) < 100:
+            return None
+        return {"text": text, "url": url, "relid": relid}
     except Exception as e:
-        print(f"[scraper] Error fetching PRID {prid}: {e}")
-        return {}
+        print(f"[scraper] Error fetching relid {relid}: {e}")
+        return None
 
-
-def _fetch_archive_prids(min_code: str, pages: int = 10) -> list[str]:
-    """
-    Fetch PRIDs from archive pages by scraping the IframePage links.
-    These pages load content server-side.
-    """
-    prids = set()
-    for page in range(1, pages + 1):
-        try:
-            url = (
-                f"https://pib.gov.in/allRel.aspx"
-                f"?reg=3&lang=1&MinCode={min_code}"
-                f"&strdate=&enddate=&Pageno={page}"
-            )
-            resp = requests.get(url, headers=HEADERS, timeout=20)
-            # Extract any PRID numbers from the raw HTML
-            matches = re.findall(r"PRID=(\d+)", resp.text)
-            prids.update(matches)
-            if not matches:
-                break  # No more pages
-            time.sleep(1)
-        except Exception as e:
-            print(f"[scraper] Archive page error: {e}")
-            break
-    return list(prids)
-
-
-def run_full_scrape(pages_per_ministry: int = 5) -> int:
-    """
-    Full scrape using RSS + archive pages.
-    Returns number of records upserted.
-    """
+def scrape_range(start, end, step, label=''):
     count = 0
-    seen_prids = set()
+    processed = _load_processed()
+    relids = [r for r in range(start, end, step) if r not in processed]
+    print(f"[scraper] {label}: checking {len(relids)} relids, {len(processed)} already processed")
+    for i, relid in enumerate(relids):
+        release = fetch_print_release(relid)
+        if not release:
+            _save_processed(relid)
+            time.sleep(0.2)
+            continue
+        text = release['text']
+        if not _is_relevant(text):
+            _save_processed(relid)
+            time.sleep(0.2)
+            continue
+        print(f"[scraper] Relevant relid {relid}: {text[:80]}")
+        ministry = "PIB / Multiple Ministries"
+        t = text.lower()
+        if "health" in t or "mohfw" in t:
+            ministry = "Ministry of Health and Family Welfare (MoHFW)"
+        elif "women and child" in t or "wcd" in t or "anganwadi" in t:
+            ministry = "Ministry of Women and Child Development (MoWCD)"
+        elif "consumer affairs" in t or "food and public" in t:
+            ministry = "Ministry of Consumer Affairs, Food & Public Distribution (MoCAFPD)"
+        elif "education" in t or "mid-day meal" in t:
+            ministry = "Ministry of Education (MoE)"
+        elif "tribal" in t:
+            ministry = "Ministry of Tribal Affairs (MoTA)"
+        elif "niti aayog" in t:
+            ministry = "NITI Aayog"
+        title = text[:120]
+        programs = extract_program_info(
+            title=title,
+            body=text[:5000],
+            ministry=ministry,
+            source_url=release['url'],
+        )
+        for p in programs:
+            upsert_program(p)
+            count += 1
+        _save_processed(relid)
+        time.sleep(0.8)
+        if (i + 1) % 100 == 0:
+            print(f"[scraper] Progress: {i+1}/{len(relids)} checked, {count} records so far")
+    print(f"[scraper] {label}: done. {count} records upserted.")
+    return count
 
-    for min_code, ministry_name in MINISTRY_MAP.items():
-        print(f"\n[scraper] Processing {ministry_name}...")
+def run_full_scrape(pages_per_ministry=5):
+    total = 0
+    for start, end, step in RELID_RANGES:
+        label = f"relid {start}-{end}"
+        total += scrape_range(start, end, step, label)
+    print(f"[scraper] Full archive scrape complete. {total} total records.")
+    return total
 
-        # Get PRIDs from RSS feed (recent releases)
-        rss_prids = _extract_prids_from_rss(min_code)
-
-        # Get PRIDs from archive pages (historical)
-        arc_prids = _fetch_archive_prids(min_code, pages=pages_per_ministry)
-
-        all_prids = list(set(rss_prids + arc_prids))
-        print(f"[scraper]   Total unique PRIDs: {len(all_prids)}")
-
-        for prid in all_prids:
-            if prid in seen_prids:
-                continue
-            seen_prids.add(prid)
-
-            release = _fetch_press_release(prid)
-            if not release or not release.get("body"):
-                continue
-
-            # Check relevance
-            combined = release["title"] + " " + release["body"]
-            if not _is_relevant(combined):
-                continue
-
-            print(f"[scraper]   ✓ Relevant: {release['title'][:60]}")
-
-            programs = extract_program_info(
-                title=release["title"],
-                body=release["body"],
-                ministry=ministry_name,
-                source_url=release["url"],
-            )
-            for p in programs:
-                upsert_program(p)
-                count += 1
-
-            time.sleep(0.8)
-
-    print(f"\n[scraper] Complete. {count} records upserted.")
+def run_weekly_scrape():
+    start, end, step = WEEKLY_RANGE
+    count = scrape_range(start, end, step, "weekly update")
+    print(f"[scraper] Weekly scrape complete. {count} new records.")
     return count
