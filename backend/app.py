@@ -139,13 +139,13 @@ def cleanup():
             if hasattr(c, "cursor"):
                 cur = c.cursor()
                 for name in bad_programs + duplicates_to_remove:
-                    cur.execute("DELETE FROM programs WHERE program_name = %s", (name,))
+                    cur.execute("DELETE FROM programs WHERE program_name ILIKE %s", (name,))
                     removed += cur.rowcount
                 c.commit()
                 cur.close()
             else:
                 for name in bad_programs + duplicates_to_remove:
-                    c.execute("DELETE FROM programs WHERE program_name = ?", (name,))
+                    c.execute("DELETE FROM programs WHERE program_name LIKE ?", (name,))
                     removed += c.execute("SELECT changes()").fetchone()[0]
                 c.commit()
         return jsonify({"removed": removed})
