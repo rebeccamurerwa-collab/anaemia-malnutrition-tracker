@@ -117,37 +117,29 @@ def cleanup():
     if secret != os.environ.get("SCRAPE_SECRET", ""):
         return jsonify({"error": "Unauthorized"}), 401
     from database import _conn
-    # Remove programs that are clearly not nutrition/anaemia focused
-    bad_programs = [
+    bad_names = [
         "Mission Indradhanush",
         "Ayushman Bharat",
         "National Rural Health Mission",
         "PM-ARKVY",
         "National Tuberculosis Elimination Programme, Anaemia Mukt Bharat, and Vaccination Programme",
         "Niyota Bhoj Program",
+        "Integrated Cereals Development Programme",
+        "Integrated Scheme on Oilseeds, Pulses, Oilpalm and Maize",
+        "National Food Security Mission",
+        "Nutrition Mission",
+        "Poshan Abhiyan",
     ]
     removed = 0
-    # Remove near-duplicates - keep best version
-    duplicates_to_remove = [
-        "Poshan Abhiyan",
-        "POSHAN Mission",
-        "Nutrition Mission",
-        "Niyota Bhoj Program",
-    ]
     try:
-        with _conn() as c:
-            if hasattr(c, "cursor"):
-                cur = c.cursor()
-                for name in bad_programs + duplicates_to_remove:
-                    cur.execute("DELETE FROM programs WHERE program_name ILIKE %s", (name,))
-                    removed += cur.rowcount
-                c.commit()
-                cur.close()
-            else:
-                for name in bad_programs + duplicates_to_remove:
-                    c.execute("DELETE FROM programs WHERE program_name LIKE ?", (name,))
-                    removed += c.execute("SELECT changes()").fetchone()[0]
-                c.commit()
+        conn = _conn()
+        cur = conn.cursor()
+        for name in bad_names:
+            cur.execute("DELETE FROM programs WHERE program_name = %s", (name,))
+            removed += cur.rowcount
+        conn.commit()
+        cur.close()
+        conn.close()
         return jsonify({"removed": removed})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
