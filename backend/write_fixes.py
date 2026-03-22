@@ -118,13 +118,16 @@ def cleanup():
     from database import _conn
     # Remove programs that are clearly not nutrition/anaemia focused
     bad_programs = [
-        "Mission Indradhanush",
-        "Ayushman Bharat",
-        "National Rural Health Mission",
-        "PM-ARKVY",
-        "National Tuberculosis Elimination Programme, Anaemia Mukt Bharat, and Vaccination Programme",
-        "Niyota Bhoj Program",
-    ]
+    "Mission Indradhanush",
+    "Ayushman Bharat",
+    "National Rural Health Mission",
+    "PM-ARKVY",
+    "National Tuberculosis Elimination Programme, Anaemia Mukt Bharat, and Vaccination Programme",
+    "Niyota Bhoj Program",
+    "Integrated Cereals Development Programme",
+    "Integrated Scheme on Oilseeds, Pulses, Oilpalm and Maize",
+    "National Food Security Mission",
+]
     removed = 0
     # Remove near-duplicates - keep best version
     duplicates_to_remove = [

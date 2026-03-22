@@ -10,13 +10,11 @@ HEADERS = {
 }
 
 KEYWORDS = [
-    "anaemia", "anemia", "malnutrition", "nutrition", "poshan",
-    "anganwadi", "icds", "stunting", "wasting",
-    "mid-day meal", "midday meal", "food security",
+    "anaemia", "anemia",
+    "malnutrition", "malnourished",
     "iron deficiency", "folic acid", "ifa supplementation",
-    "micronutrient", "food fortification", "supplementary nutrition",
-    "take home ration", "therapeutic food", "acute malnutrition",
-    "poshan abhiyaan", "anaemia mukt", "rashtriya poshan",
+    "micronutrient", "food fortification",
+    "supplementary nutrition",
     "child nutrition", "maternal nutrition", "infant nutrition",
 ]
 
