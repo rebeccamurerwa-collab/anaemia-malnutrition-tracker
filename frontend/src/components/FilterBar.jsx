@@ -1,12 +1,12 @@
 const MINISTRIES = [
-  "",
-  "MoHFW",
-  "MoWCD",
-  "MoCAFPD",
-  "MoE",
-  "MoTA",
-  "NITI Aayog",
-  "Google Alert / News",
+  { label: "All Ministries", value: "" },
+  { label: "MoHFW", value: "Ministry of Health and Family Welfare" },
+  { label: "MoWCD", value: "Ministry of Women and Child Development" },
+  { label: "MoCAFPD", value: "Consumer Affairs" },
+  { label: "MoE", value: "Ministry of Education" },
+  { label: "MoTA", value: "Tribal Affairs" },
+  { label: "NITI Aayog", value: "NITI Aayog" },
+  { label: "Google Alerts", value: "Google Alert" },
 ];
 
 const STATES = [
@@ -28,9 +28,8 @@ export function FilterBar({ filters, setFilters }) {
     <div className="filter-bar">
       <select value={filters.ministry}
               onChange={e => set("ministry", e.target.value)}>
-        <option value="">All Ministries</option>
-        {MINISTRIES.filter(Boolean).map(m => (
-          <option key={m} value={m}>{m}</option>
+        {MINISTRIES.map(m => (
+          <option key={m.value} value={m.value}>{m.label}</option>
         ))}
       </select>
 
