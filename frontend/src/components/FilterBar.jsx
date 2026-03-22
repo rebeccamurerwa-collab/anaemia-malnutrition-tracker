@@ -1,14 +1,3 @@
-const MINISTRIES = [
-  { label: "All Ministries", value: "" },
-  { label: "MoHFW", value: "Ministry of Health and Family Welfare" },
-  { label: "MoWCD", value: "Ministry of Women and Child Development" },
-  { label: "MoCAFPD", value: "Consumer Affairs" },
-  { label: "MoE", value: "Ministry of Education" },
-  { label: "MoTA", value: "Tribal Affairs" },
-  { label: "NITI Aayog", value: "NITI Aayog" },
-  { label: "Google Alerts", value: "Google Alert" },
-];
-
 const STATES = [
   "", "Andhra Pradesh", "Assam", "Bihar", "Chhattisgarh",
   "Gujarat", "Himachal Pradesh", "Jharkhand", "Karnataka",
@@ -26,11 +15,12 @@ export function FilterBar({ filters, setFilters }) {
   const set = (k, v) => setFilters(f => ({ ...f, [k]: v }));
   return (
     <div className="filter-bar">
-      <select value={filters.ministry}
-              onChange={e => set("ministry", e.target.value)}>
-        {MINISTRIES.map(m => (
-          <option key={m.value} value={m.value}>{m.label}</option>
-        ))}
+      <select value={filters.category}
+              onChange={e => set("category", e.target.value)}>
+        <option value="">All Categories</option>
+        <option value="anaemia">Anaemia</option>
+        <option value="malnutrition">Malnutrition</option>
+        <option value="both">Both</option>
       </select>
 
       <select value={filters.state}
@@ -51,7 +41,7 @@ export function FilterBar({ filters, setFilters }) {
 
       <button
         className="clear-btn"
-        onClick={() => setFilters({ ministry: "", state: "", year: "" })}
+        onClick={() => setFilters({ category: "", state: "", year: "" })}
       >
         Clear
       </button>

@@ -1,4 +1,7 @@
 import os
+base = r"C:\Users\rebec\OneDrive\Documents\anaemia-malnutrition-tracker\backend"
+
+database = '''import os
 import json
 from datetime import datetime
 
@@ -249,3 +252,8 @@ else:
         except Exception:
             d["key_interventions"] = []
         return d
+'''
+
+with open(os.path.join(base, "database.py"), "w", encoding="utf-8") as f:
+    f.write(database.strip())
+print("database.py written!")

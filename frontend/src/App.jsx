@@ -11,7 +11,7 @@ export default function App() {
   const [stats, setStats]         = useState(null);
   const [loading, setLoading]     = useState(true);
   const [filters, setFilters]     = useState({
-    ministry: "", state: "", year: ""
+    category: "", state: "", year: ""
   });
 
   const fetchPrograms = async () => {

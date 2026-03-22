@@ -1,4 +1,10 @@
 import os
+
+base = r"C:\Users\rebec\OneDrive\Documents\anaemia-malnutrition-tracker\backend"
+
+# ── gemini_processor.py ──────────────────────────────────────────
+processor = '''
+import os
 import json
 import re
 from groq import Groq
@@ -56,8 +62,8 @@ def extract_program_info(title, body, ministry, source_url):
             max_tokens=2000,
         )
         raw = response.choices[0].message.content.strip()
-        raw = re.sub(r"^```(?:json)?\s*", "", raw)
-        raw = re.sub(r"\s*```$", "", raw)
+        raw = re.sub(r"^```(?:json)?\\s*", "", raw)
+        raw = re.sub(r"\\s*```$", "", raw)
         data = json.loads(raw)
         if isinstance(data, list):
             return data
@@ -70,3 +76,8 @@ def extract_program_info(title, body, ministry, source_url):
     except Exception as e:
         print(f"[groq] API error: {e}")
         return []
+'''
+
+with open(os.path.join(base, "gemini_processor.py"), "w", encoding="utf-8") as f:
+    f.write(processor.strip())
+print("gemini_processor.py written!")

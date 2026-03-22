@@ -21,11 +21,10 @@ start_scheduler()
 @app.route("/api/programs", methods=["GET"])
 def programs():
     ministry   = request.args.get("ministry")
-    scope      = request.args.get("scope")       # central | state
-    status     = request.args.get("status")      # active | proposed
-    state_name = request.args.get("state")
-    rows = get_all_programs(ministry=ministry, scope=scope,
-                             status=status, state_name=state_name)
+    state      = request.args.get("state")
+    year       = request.args.get("year")
+    category   = request.args.get("category")
+    rows = get_all_programs(ministry=ministry, state_name=state, year=year, category=category)
     return jsonify(rows)
 
 
