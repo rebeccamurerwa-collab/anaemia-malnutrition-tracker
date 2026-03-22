@@ -39,9 +39,17 @@ export function FilterBar({ filters, setFilters }) {
         ))}
       </select>
 
+      <select value={filters.source}
+              onChange={e => set("source", e.target.value)}>
+        <option value="">All Sources</option>
+        <option value="PIB">PIB Press Releases</option>
+        <option value="Gmail">Google Alerts</option>
+        <option value="Seed">Seed Data</option>
+      </select>
+
       <button
         className="clear-btn"
-        onClick={() => setFilters({ category: "", state: "", year: "" })}
+        onClick={() => setFilters({ category: "", state: "", year: "", source: "" })}
       >
         Clear
       </button>

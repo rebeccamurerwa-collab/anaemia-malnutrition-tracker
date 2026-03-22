@@ -24,9 +24,26 @@ def programs():
     state      = request.args.get("state")
     year       = request.args.get("year")
     category   = request.args.get("category")
-    rows = get_all_programs(ministry=ministry, state_name=state, year=year, category=category)
+    source     = request.args.get("source")
+    rows = get_all_programs(ministry=ministry, state_name=state,
+                            year=year, category=category, source=source)
     return jsonify(rows)
 
+@app.route("/api/programs/new", methods=["GET"])
+def new_programs():
+    from datetime import datetime, timedelta
+    rows = get_all_programs()
+    week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+    new = [r for r in rows if r.get("created_at", "") >= week_ago]
+    return jsonify(new)
+
+@app.route("/api/programs/new", methods=["GET"])
+def new_programs():
+    from datetime import datetime, timedelta
+    rows = get_all_programs()
+    week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+    new = [r for r in rows if r.get("created_at", "") >= week_ago]
+    return jsonify(new)
 
 @app.route("/api/programs/<int:pid>", methods=["GET"])
 def program_detail(pid):

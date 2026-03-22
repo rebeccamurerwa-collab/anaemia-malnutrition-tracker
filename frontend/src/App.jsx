@@ -7,11 +7,12 @@ import ProgramCard from "./components/ProgramCard";
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function App() {
-  const [programs, setPrograms]   = useState([]);
-  const [stats, setStats]         = useState(null);
-  const [loading, setLoading]     = useState(true);
-  const [filters, setFilters]     = useState({
-    category: "", state: "", year: ""
+  const [programs, setPrograms]       = useState([]);
+  const [newPrograms, setNewPrograms] = useState([]);
+  const [stats, setStats]             = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [filters, setFilters]         = useState({
+    category: "", state: "", year: "", source: ""
   });
 
   const fetchPrograms = async () => {
@@ -23,10 +24,16 @@ export default function App() {
       const res  = await fetch(`${API}/api/programs?${params}`);
       const data = await res.json();
       setPrograms(data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
     setLoading(false);
+  };
+
+  const fetchNew = async () => {
+    try {
+      const res  = await fetch(`${API}/api/programs/new`);
+      const data = await res.json();
+      setNewPrograms(data);
+    } catch (e) { console.error(e); }
   };
 
   const fetchStats = async () => {
@@ -38,22 +45,30 @@ export default function App() {
   };
 
   useEffect(() => { fetchPrograms(); }, [filters]);
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => { fetchStats(); fetchNew(); }, []);
 
   return (
     <div className="app-shell">
       <Header />
       {stats && <StatsBar stats={stats} />}
       <main className="main-content">
+        {newPrograms.length > 0 && (
+          <div className="new-this-week">
+            <h2 className="new-title">New this week</h2>
+            <div className="card-grid">
+              {newPrograms.map(p => <ProgramCard key={p.id} program={p} />)}
+            </div>
+          </div>
+        )}
         <FilterBar filters={filters} setFilters={setFilters} />
         {loading ? (
           <div className="loading-wrap">
             <div className="spinner" />
-            <p>Loading programs…</p>
+            <p>Loading programs...</p>
           </div>
         ) : programs.length === 0 ? (
           <div className="empty-state">
-            <p>No programs found. Try adjusting your filters, or trigger a scrape.</p>
+            <p>No programs found. Try adjusting your filters.</p>
           </div>
         ) : (
           <div className="card-grid">
@@ -62,7 +77,7 @@ export default function App() {
         )}
       </main>
       <footer className="footer">
-        <p>Data sourced from PIB India · Powered by Gemini AI · Updated weekly</p>
+        <p>Data sourced from PIB India · Powered by Groq AI · Updated weekly</p>
       </footer>
     </div>
   );

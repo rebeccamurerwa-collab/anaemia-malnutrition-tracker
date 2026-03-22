@@ -173,3 +173,16 @@ body { font-family: "Inter", system-ui, sans-serif; background: var(--off-white)
   .stats-bar { flex-wrap: wrap; }
   .stat-chip { min-width: 90px; }
 }
+.new-this-week {
+  background: #fff8f6;
+  border: 1.5px solid #dc6059;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 28px;
+}
+.new-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--red);
+  margin-bottom: 16px;
+}

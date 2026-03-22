@@ -83,7 +83,7 @@ if DATABASE_URL:
             c.commit()
 
     def get_all_programs(ministry=None, scope=None, status=None,
-                         state_name=None, year=None, category=None):
+                         state_name=None, year=None, category=None, source=None):
         filters, params = [], []
         if ministry:
             filters.append("ministry ILIKE %s")
@@ -97,6 +97,15 @@ if DATABASE_URL:
         if category:
             filters.append("category ILIKE %s")
             params.append(f"%{category}%")
+        if source == "PIB":
+            filters.append("source_url ILIKE %s")
+            params.append("%pib.gov.in%")
+        elif source == "Gmail":
+            filters.append("source_url = %s")
+            params.append("Gmail Alert")
+        elif source == "Seed":
+            filters.append("source_url = %s")
+            params.append("Seed data")
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
         with _conn() as c:
             with c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -209,7 +218,7 @@ else:
             c.commit()
 
     def get_all_programs(ministry=None, scope=None, status=None,
-                         state_name=None, year=None, category=None):
+                         state_name=None, year=None, category=None, source=None):
         filters, params = [], []
         if ministry:
             filters.append("ministry LIKE ?")
@@ -223,6 +232,15 @@ else:
         if category:
             filters.append("category LIKE ?")
             params.append(f"%{category}%")
+        if source == "PIB":
+            filters.append("source_url LIKE ?")
+            params.append("%pib.gov.in%")
+        elif source == "Gmail":
+            filters.append("source_url = ?")
+            params.append("Gmail Alert")
+        elif source == "Seed":
+            filters.append("source_url = ?")
+            params.append("Seed data")
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
         with _conn() as c:
             rows = c.execute(
