@@ -15,7 +15,7 @@ if DATABASE_URL:
     import psycopg2.extras
 
     def _conn():
-        return psycopg2.connect(DATABASE_URL)
+        return psycopg2.connect(DATABASE_URL, connect_timeout=10, options="-c client_encoding=UTF8")
 
     def init_db():
         with _conn() as c:
