@@ -14,21 +14,17 @@ export default function ProgramCard({ program: p }) {
 
   return (
     <div className="program-card">
-      {/* ── Header row ── */}
       <div className="card-header">
         <div className="card-title-block">
           <h3 className="card-title">{p.program_name}</h3>
           <span className="ministry-tag">{p.ministry}</span>
         </div>
-        <span
-          className="status-badge"
-          style={{ background: sc.bg, color: sc.text, borderColor: sc.border }}
-        >
+        <span className="status-badge"
+          style={{ background: sc.bg, color: sc.text, borderColor: sc.border }}>
           {p.status || "unknown"}
         </span>
       </div>
 
-      {/* ── Meta row ── */}
       <div className="card-meta">
         {p.scope && (
           <span className={`scope-pill ${p.scope}`}>
@@ -45,10 +41,8 @@ export default function ProgramCard({ program: p }) {
         )}
       </div>
 
-      {/* ── Summary ── */}
       {p.summary && <p className="card-summary">{p.summary}</p>}
 
-      {/* ── Beneficiaries ── */}
       {p.target_beneficiaries && (
         <div className="card-row">
           <span className="row-label">Beneficiaries</span>
@@ -56,7 +50,6 @@ export default function ProgramCard({ program: p }) {
         </div>
       )}
 
-      {/* ── Key interventions ── */}
       {p.key_interventions?.length > 0 && (
         <div className="interventions-block">
           <span className="row-label">Key interventions</span>
@@ -68,7 +61,6 @@ export default function ProgramCard({ program: p }) {
         </div>
       )}
 
-      {/* ── Expand / Source ── */}
       <div className="card-footer">
         
           href={`https://www.google.com/search?q=${encodeURIComponent(p.program_name + " India government program")}`}
