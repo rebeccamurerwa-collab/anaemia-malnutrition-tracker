@@ -29,6 +29,10 @@ Rules:
 - Only include programs related to anaemia, malnutrition, nutrition, food security, or micronutrient deficiency.
 - If unrelated, return empty array [].
 - Do not invent data. Use null for missing fields.
+- Avoid duplicates: if the same program appears multiple times in the text, only include it once.
+- Use the most official and complete version of the program name e.g. prefer "POSHAN Abhiyaan" over "Poshan Mission".
+- If unsure whether two mentions are the same program, include only the more detailed one.
+- Return valid JSON only, no markdown fences.
 - Return valid JSON only, no markdown fences.
 
 ---
