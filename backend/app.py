@@ -100,6 +100,7 @@ def seed():
                 "status": p.get("status", "active"),
                 "scope": "state" if p.get("state") else "central",
                 "state_name": p.get("state"),
+                "category": p.get("category", "unknown"),
                 "key_interventions": [p.get("key_features")] if p.get("key_features") else [],
                 "summary": p.get("purpose"),
                 "source_url": "Seed data",
