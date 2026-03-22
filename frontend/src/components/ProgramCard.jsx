@@ -70,8 +70,16 @@ export default function ProgramCard({ program: p }) {
 
       {/* ── Expand / Source ── */}
       <div className="card-footer">
-        {p.source_url && p.source_url !== "Gmail Alert" && (
-          <a
+        
+          href={`https://www.google.com/search?q=${encodeURIComponent(p.program_name + " India government program")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="source-link"
+        >
+          Search online ↗
+        </a>
+        {p.source_url && p.source_url !== "Gmail Alert" && p.source_url !== "Seed data" && (
+          
             href={p.source_url}
             target="_blank"
             rel="noopener noreferrer"
