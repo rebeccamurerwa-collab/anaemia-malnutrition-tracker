@@ -6,61 +6,59 @@ from groq import Groq
 client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
 EXTRACTION_PROMPT = """
-You are an expert policy analyst specialising in nutrition and public health programs in India.
-Always respond in English, translating any Hindi or other language content to English.
+You are a strict nutrition policy analyst for India. Your job is to identify ONLY programs that directly deliver nutrition or anaemia interventions to people.
 
-Given the press release below, extract ONLY programs that DIRECTLY address anaemia OR malnutrition.
+A program QUALIFIES only if it does ONE OR MORE of these specific things:
+1. Gives iron tablets, IFA supplements, or folic acid directly to people
+2. Gives food, cooked meals, or nutritional supplements directly to children or women
+3. Treats children with acute malnutrition using therapeutic foods (RUTF, F75, F100)
+4. Provides take-home rations or supplementary feeding to mothers or children
+5. Fortifies staple foods (flour, rice, oil, salt) with micronutrients for direct consumption
+6. Provides vitamin A drops or zinc supplements directly to children
+7. Runs deworming campaigns for children or women
+8. Monitors child growth (height/weight) and provides nutrition support
 
-STRICT INCLUSION RULES - a program MUST do at least one of these to be included:
-- Provide iron/folic acid (IFA) supplementation
-- Provide food, meals, or nutritional supplements directly to beneficiaries
-- Address stunting, wasting, or underweight in children
-- Address anaemia through direct interventions
-- Provide therapeutic feeding (RUTF, F75, F100)
-- Provide take-home rations or supplementary nutrition
-- Address micronutrient deficiencies through direct supplementation or fortification
+A program does NOT qualify if it only:
+- Increases agricultural production (cereals, pulses, oilseeds, maize)
+- Provides general healthcare, insurance, or hospital access
+- Focuses on immunisation or vaccination without nutrition component
+- Provides cash transfers with no specific nutrition condition
+- Improves water supply or sanitation (unless directly linked to nutrition outcomes)
+- Addresses tuberculosis, malaria, or other diseases without direct nutrition intervention
+- Funds research, builds infrastructure, or trains health workers without direct beneficiary nutrition
 
-STRICT EXCLUSION RULES - do NOT include programs that only:
-- Provide general healthcare, insurance, or hospital services (e.g. Ayushman Bharat, NRHM)
-- Focus on immunisation or vaccination (e.g. Mission Indradhanush)
-- Address tuberculosis, malaria, or other diseases without a nutrition component
-- Provide cash transfers WITHOUT a direct nutrition intervention
-- Focus on agriculture, oilseeds, or general food production without direct beneficiary nutrition
-- Mention nutrition only in passing or as a secondary benefit
+DEDUPLICATION:
+- If the same program appears multiple times, include it ONCE only
+- "POSHAN Abhiyaan", "Poshan Abhiyan", "POSHAN Mission" = same program, use "POSHAN Abhiyaan"
+- "Mid-Day Meal Scheme", "PM POSHAN", "Mid-day Meal" = same program, use "PM POSHAN"
 
-DEDUPLICATION RULES:
-- If the same program appears multiple times, include it only ONCE
-- Use the most complete and official version of the program name
-- "POSHAN Abhiyaan", "Poshan Abhiyan", "POSHAN Mission" are the same program - pick the most official name
-- If unsure whether two mentions are the same program, include only the more detailed one
+QUALITY CHECK - reject any program where you cannot fill in ALL THREE of:
+- A specific official program name
+- At least one qualifying intervention from the list above
+- A specific beneficiary group (not just "population" or "people")
 
-QUALITY RULES - every included program MUST have:
-- A specific program name (not just "nutrition program" or "health scheme")
-- At least one specific key intervention from the list below
-- At least one target beneficiary group
-
-Return a JSON array. Each element must have these fields (use null if not found):
-- "program_name": string - official name
+Return a JSON array. Each element must have:
+- "program_name": string - most official name
 - "ministry": string - as provided
-- "date_announced": string - ONLY the 4-digit launch year e.g. "2018". Look for "launched in", "started in", "introduced in", "since", "established in". Return null if not clearly stated.
-- "target_beneficiaries": string e.g. "children under 5, pregnant women"
-- "budget_amount": string with units e.g. "1500 crore" or null
-- "status": string - one of: active, proposed, discontinued, under review
-- "scope": string - one of: central, state
-- "state_name": string - state name if state-specific, else null
-- "category": string - one of: anaemia, malnutrition, both
-- "key_interventions": array of strings - ONLY from this list:
-    ["IFA supplementation", "deworming", "cash transfers", "mid-day meals",
-     "take-home rations", "food fortification", "behaviour change communication",
-     "POSHAN Tracker", "anganwadi services", "therapeutic feeding", "RUTF",
-     "growth monitoring", "micronutrient supplementation", "dietary counselling",
-     "supplementary nutrition", "food security", "nutrition rehabilitation",
-     "kitchen gardens", "haemoglobin testing", "vitamin A supplementation"]
-- "summary": string - 2-3 sentence plain-language summary in English
-- "source_url": string - as provided
+- "date_announced": string - 4-digit launch year only e.g. "2018", or null
+- "target_beneficiaries": string - specific group e.g. "children under 5, pregnant women"
+- "budget_amount": string with units or null
+- "status": one of: active, proposed, discontinued, under review
+- "scope": one of: central, state
+- "state_name": state name if state-specific, else null
+- "category": one of: anaemia, malnutrition, both
+- "key_interventions": array - only use these exact terms:
+    ["IFA supplementation", "deworming", "mid-day meals", "take-home rations",
+     "food fortification", "therapeutic feeding", "RUTF", "growth monitoring",
+     "micronutrient supplementation", "dietary counselling", "supplementary nutrition",
+     "vitamin A supplementation", "zinc supplementation", "haemoglobin testing",
+     "nutrition rehabilitation", "cash transfers with nutrition conditions",
+     "anganwadi services", "POSHAN Tracker", "kitchen gardens"]
+- "summary": 2-3 sentences in English
+- "source_url": as provided
 
-If no programs meet ALL the inclusion and quality rules, return an empty array [].
-Return valid JSON only, no markdown fences, no extra text.
+If NO programs qualify, return [].
+Return valid JSON only. No markdown. No explanation.
 
 ---
 MINISTRY: {ministry}
@@ -69,7 +67,6 @@ TITLE: {title}
 BODY:
 {body}
 ---
-Return JSON array:
 """
 
 def extract_program_info(title, body, ministry, source_url):
