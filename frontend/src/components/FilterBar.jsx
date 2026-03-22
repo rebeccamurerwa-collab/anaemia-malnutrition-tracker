@@ -9,6 +9,19 @@ const MINISTRIES = [
   "Google Alert / News",
 ];
 
+const STATES = [
+  "", "Andhra Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Gujarat", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Odisha",
+  "Punjab", "Rajasthan", "Tamil Nadu", "Telangana",
+  "Uttar Pradesh", "West Bengal",
+];
+
+const YEARS = [""];
+for (let y = new Date().getFullYear(); y >= 1980; y--) {
+  YEARS.push(String(y));
+}
+
 export function FilterBar({ filters, setFilters }) {
   const set = (k, v) => setFilters(f => ({ ...f, [k]: v }));
   return (
@@ -21,32 +34,25 @@ export function FilterBar({ filters, setFilters }) {
         ))}
       </select>
 
-      <select value={filters.scope}
-              onChange={e => set("scope", e.target.value)}>
-        <option value="">Central &amp; State</option>
-        <option value="central">Central only</option>
-        <option value="state">State only</option>
+      <select value={filters.state}
+              onChange={e => set("state", e.target.value)}>
+        <option value="">All States</option>
+        {STATES.filter(Boolean).map(s => (
+          <option key={s} value={s}>{s}</option>
+        ))}
       </select>
 
-      <select value={filters.status}
-              onChange={e => set("status", e.target.value)}>
-        <option value="">All Statuses</option>
-        <option value="active">Active</option>
-        <option value="proposed">Proposed</option>
-        <option value="under review">Under Review</option>
-        <option value="discontinued">Discontinued</option>
+      <select value={filters.year}
+              onChange={e => set("year", e.target.value)}>
+        <option value="">All Years</option>
+        {YEARS.filter(Boolean).map(y => (
+          <option key={y} value={y}>{y}</option>
+        ))}
       </select>
-
-      <input
-        type="text"
-        placeholder="Filter by state name…"
-        value={filters.state}
-        onChange={e => set("state", e.target.value)}
-      />
 
       <button
         className="clear-btn"
-        onClick={() => setFilters({ ministry: "", scope: "", status: "", state: "" })}
+        onClick={() => setFilters({ ministry: "", state: "", year: "" })}
       >
         Clear
       </button>
