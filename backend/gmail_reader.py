@@ -1,6 +1,7 @@
 import os
 import base64
 import re
+import urllib.parse
 import requests
 from bs4 import BeautifulSoup
 from google.oauth2.credentials import Credentials
@@ -42,42 +43,72 @@ def _get_gmail_service():
     return build("gmail", "v1", credentials=creds)
 
 
-def _decode_body(payload):
-    if payload.get("body", {}).get("data"):
-        raw = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="replace")
-        return raw
+def _get_email_parts(payload):
+    """Extract HTML and plain text bodies from email payload."""
+    html_body = ""
+    plain_body = ""
     for part in payload.get("parts", []):
-        text = _decode_body(part)
-        if text:
-            return text
-    return ""
+        mime = part.get("mimeType", "")
+        data = part.get("body", {}).get("data", "")
+        if data:
+            decoded = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+            if mime == "text/html":
+                html_body = decoded
+            elif mime == "text/plain":
+                plain_body = decoded
+        # Handle nested parts
+        for subpart in part.get("parts", []):
+            submime = subpart.get("mimeType", "")
+            subdata = subpart.get("body", {}).get("data", "")
+            if subdata:
+                subdecoded = base64.urlsafe_b64decode(subdata).decode("utf-8", errors="replace")
+                if submime == "text/html" and not html_body:
+                    html_body = subdecoded
+                elif submime == "text/plain" and not plain_body:
+                    plain_body = subdecoded
+    # Fallback to top-level body
+    if not html_body and not plain_body:
+        data = payload.get("body", {}).get("data", "")
+        if data:
+            plain_body = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+    return html_body, plain_body
 
 
-def _extract_alert_links(html_body):
+def _extract_article_urls(html_body, plain_body):
     """Extract actual article URLs from Google Alert email."""
-    soup = BeautifulSoup(html_body, "html.parser")
     links = []
-    for a in soup.find_all("a", href=True):
-        href = a.get("href", "")
-        # Google Alerts wraps links in a Google redirect URL
-        # Extract the actual URL from the redirect
-        if "google.com/url" in href:
-            match = re.search(r"url=([^&]+)", href)
-            if match:
-                import urllib.parse
-                actual_url = urllib.parse.unquote(match.group(1))
-                if actual_url.startswith("http") and "google.com" not in actual_url:
-                    links.append(actual_url)
-        elif href.startswith("http") and "google.com" not in href:
-            links.append(href)
-    # Remove duplicates while preserving order
+
+    # Method 1: Extract from plain text (most reliable)
+    google_urls = re.findall(r'https://www\.google\.com/url\?[^\s>]+', plain_body)
+    for gurl in google_urls:
+        match = re.search(r"url=(https?://[^&\s]+)", gurl)
+        if match:
+            actual = urllib.parse.unquote(match.group(1))
+            if "google.com" not in actual:
+                links.append(actual)
+
+    # Method 2: Extract from HTML
+    if not links and html_body:
+        soup = BeautifulSoup(html_body, "html.parser")
+        for a in soup.find_all("a", href=True):
+            href = a.get("href", "")
+            if "google.com/url" in href:
+                match = re.search(r"url=(https?://[^&]+)", href)
+                if match:
+                    actual = urllib.parse.unquote(match.group(1))
+                    if "google.com" not in actual:
+                        links.append(actual)
+            elif href.startswith("http") and "google.com" not in href:
+                links.append(href)
+
+    # Remove duplicates
     seen = set()
-    unique_links = []
+    unique = []
     for l in links:
         if l not in seen:
             seen.add(l)
-            unique_links.append(l)
-    return unique_links[:10]  # max 10 articles per alert
+            unique.append(l)
+    return unique[:10]
 
 
 def _fetch_article_text(url):
@@ -87,10 +118,8 @@ def _fetch_article_text(url):
         if resp.status_code != 200:
             return ""
         soup = BeautifulSoup(resp.text, "html.parser")
-        # Remove navigation, ads, scripts
         for tag in soup(["script", "style", "nav", "header", "footer", "aside"]):
             tag.decompose()
-        # Try common article content selectors
         for selector in [
             "article", "div.article-body", "div.story-body",
             "div.content-body", "div.post-content", "div.entry-content",
@@ -101,7 +130,6 @@ def _fetch_article_text(url):
                 text = content.get_text(separator=" ", strip=True)
                 if len(text) > 200:
                     return text[:5000]
-        # Fallback: get all paragraphs
         paras = [p.get_text(strip=True) for p in soup.find_all("p")
                  if len(p.get_text(strip=True)) > 50]
         return " ".join(paras)[:5000]
@@ -113,15 +141,6 @@ def _fetch_article_text(url):
 def _is_relevant(text):
     t = text.lower()
     return any(k in t for k in KEYWORDS)
-
-
-def _extract_alert_snippet(html_body):
-    """Fallback: extract snippet text from alert email."""
-    soup = BeautifulSoup(html_body, "html.parser")
-    articles = soup.find_all("article") or soup.find_all("td", class_=re.compile("article"))
-    if articles:
-        return "\n\n".join(a.get_text(separator=" ", strip=True) for a in articles)
-    return soup.get_text(separator="\n", strip=True)[:5000]
 
 
 def fetch_gmail_alerts():
@@ -148,44 +167,34 @@ def fetch_gmail_alerts():
         headers = {h["name"]: h["value"]
                    for h in msg["payload"].get("headers", [])}
         subject = headers.get("Subject", "")
-        body_html = _decode_body(msg["payload"])
 
-        # Extract article links from the alert
-        article_links = _extract_alert_links(body_html)
-        print(f"[gmail] Found {len(article_links)} article links in alert: {subject}")
+        html_body, plain_body = _get_email_parts(msg["payload"])
+        article_urls = _extract_article_urls(html_body, plain_body)
+        print(f"[gmail] Found {len(article_urls)} article links in: {subject}")
 
-        # Process each article
-        for url in article_links:
-            # First check snippet relevance quickly
-            article_text = _fetch_article_text(url)
-            if not article_text:
-                # Fallback to email snippet
-                article_text = _extract_alert_snippet(body_html)
-
-            if not article_text or not _is_relevant(article_text):
-                continue
-
-            print(f"[gmail] Processing article: {url[:80]}")
-
-            programs = extract_program_info(
-                title=subject,
-                body=article_text,
-                ministry="Google Alert / News",
-                source_url=url,
-            )
-            for p in programs:
-                # Use article URL as source instead of "Gmail Alert"
-                p["source_url"] = url
-                upsert_program(p)
-                count += 1
-
-        # If no article links found, fall back to email snippet
-        if not article_links:
-            snippet = _extract_alert_snippet(body_html)
+        if article_urls:
+            for url in article_urls:
+                article_text = _fetch_article_text(url)
+                if not article_text or not _is_relevant(article_text):
+                    continue
+                print(f"[gmail] Processing: {url[:80]}")
+                programs = extract_program_info(
+                    title=subject,
+                    body=article_text,
+                    ministry="Google Alert / News",
+                    source_url=url,
+                )
+                for p in programs:
+                    p["source_url"] = url
+                    upsert_program(p)
+                    count += 1
+        else:
+            # Fallback to email snippet
+            snippet = plain_body or html_body
             if snippet and _is_relevant(snippet):
                 programs = extract_program_info(
                     title=subject,
-                    body=snippet,
+                    body=snippet[:5000],
                     ministry="Google Alert / News",
                     source_url="Gmail Alert",
                 )
@@ -193,7 +202,7 @@ def fetch_gmail_alerts():
                     upsert_program(p)
                     count += 1
 
-        # Mark as read after processing
+        # Mark as read
         service.users().messages().modify(
             userId="me",
             id=msg_ref["id"],
