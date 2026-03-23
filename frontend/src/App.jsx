@@ -52,11 +52,11 @@ export default function App() {
       <Header />
       {stats && <StatsBar stats={stats} />}
       <main className="main-content">
-        {newPrograms.length > 0 && (
+        {newPrograms.filter(p => p.source_url !== "Seed data").length > 0 && (
           <div className="new-this-week">
             <h2 className="new-title">New this week</h2>
             <div className="card-grid">
-              {newPrograms.map(p => <ProgramCard key={p.id} program={p} />)}
+              {newPrograms.filter(p => p.source_url !== "Seed data").map(p => <ProgramCard key={p.id} program={p} />)}
             </div>
           </div>
         )}
