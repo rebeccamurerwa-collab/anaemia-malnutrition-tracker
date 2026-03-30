@@ -1,4 +1,7 @@
 import os
+base = r"C:\Users\rebec\OneDrive\Documents\anaemia-malnutrition-tracker\backend"
+
+app_code = '''import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from database import init_db, get_all_programs, get_program_by_id, upsert_program
@@ -210,3 +213,8 @@ def health():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+'''
+
+with open(os.path.join(base, "app.py"), "w", encoding="utf-8") as f:
+    f.write(app_code.strip())
+print("app.py written!")
