@@ -83,7 +83,8 @@ if DATABASE_URL:
             c.commit()
 
     def get_all_programs(ministry=None, scope=None, status=None,
-                         state_name=None, year=None, category=None, source=None):
+                         state_name=None, year=None, category=None,
+                         source=None, search=None):
         filters, params = [], []
         if ministry:
             filters.append("ministry ILIKE %s")
@@ -92,7 +93,8 @@ if DATABASE_URL:
             filters.append("state_name ILIKE %s")
             params.append(f"%{state_name}%")
         if year:
-            filters.append("date_announced = %s")
+            filters.append("(date_announced <= %s OR date_announced IS NULL)")
+            filters.append("status = 'active'")
             params.append(year)
         if category:
             filters.append("category ILIKE %s")
@@ -106,6 +108,9 @@ if DATABASE_URL:
         elif source == "Seed":
             filters.append("source_url = %s")
             params.append("Seed data")
+        if search:
+            filters.append("(program_name ILIKE %s OR summary ILIKE %s)")
+            params.extend([f"%{search}%", f"%{search}%"])
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
         with _conn() as c:
             with c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -218,7 +223,8 @@ else:
             c.commit()
 
     def get_all_programs(ministry=None, scope=None, status=None,
-                         state_name=None, year=None, category=None, source=None):
+                         state_name=None, year=None, category=None,
+                         source=None, search=None):
         filters, params = [], []
         if ministry:
             filters.append("ministry LIKE ?")
@@ -227,7 +233,8 @@ else:
             filters.append("state_name LIKE ?")
             params.append(f"%{state_name}%")
         if year:
-            filters.append("date_announced = ?")
+            filters.append("(date_announced <= ? OR date_announced IS NULL)")
+            filters.append("status = 'active'")
             params.append(year)
         if category:
             filters.append("category LIKE ?")
@@ -241,6 +248,9 @@ else:
         elif source == "Seed":
             filters.append("source_url = ?")
             params.append("Seed data")
+        if search:
+            filters.append("(program_name LIKE ? OR summary LIKE ?)")
+            params.extend([f"%{search}%", f"%{search}%"])
         where = ("WHERE " + " AND ".join(filters)) if filters else ""
         with _conn() as c:
             rows = c.execute(
