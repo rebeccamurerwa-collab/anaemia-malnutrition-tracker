@@ -29,8 +29,14 @@ A program does NOT qualify if it only:
 
 DEDUPLICATION:
 - If the same program appears multiple times, include it ONCE only
-- "POSHAN Abhiyaan", "Poshan Abhiyan", "POSHAN Mission" = same program, use "POSHAN Abhiyaan"
-- "Mid-Day Meal Scheme", "PM POSHAN", "Mid-day Meal" = same program, use "PM POSHAN"
+- Use EXACTLY these official names for well-known programs:
+  * Any mention of POSHAN Abhiyaan/Abhiyan/Mission → use "POSHAN Abhiyaan"
+  * Any mention of PM POSHAN/Mid-Day Meal/Midday Meal → use "PM POSHAN"
+  * Any mention of ICDS/Integrated Child Development → use "Integrated Child Development Services (ICDS)"
+  * Any mention of Anaemia Mukt Bharat/Anemia Mukt Bharat → use "Anaemia Mukt Bharat"
+  * Any mention of National Nutrition Mission → use "POSHAN Abhiyaan"
+  * Any mention of Pradhan Mantri Matru Vandana/PMMVY → use "Pradhan Mantri Matru Vandana Yojana (PMMVY)"
+  * Any mention of Janani Suraksha Yojana/JSY → use "Janani Suraksha Yojana (JSY)"
 
 QUALITY CHECK - reject any program where you cannot fill in ALL THREE of:
 - A specific official program name
