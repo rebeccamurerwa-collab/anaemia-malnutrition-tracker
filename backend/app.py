@@ -10,7 +10,7 @@ app = Flask(__name__)
 CORS(app)
 
 # ── DB init ──────────────────────────────────────────────────────────────────
-init_db()
+ init_db()
 except Exception as e:
     print(f"[startup] DB init warning: {e}")
 
