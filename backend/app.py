@@ -120,6 +120,55 @@ def seed():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/deduplicate", methods=["POST"])
+def deduplicate():
+    secret = request.headers.get("X-Scrape-Secret", "")
+    if secret != os.environ.get("SCRAPE_SECRET", ""):
+        return jsonify({"error": "Unauthorized"}), 401
+    from database import _conn
+    # Canonical name mapping
+    canonical = {
+        "Poshan Abhiyan": "POSHAN Abhiyaan",
+        "POSHAN Mission": "POSHAN Abhiyaan",
+        "National Nutrition Mission": "POSHAN Abhiyaan",
+        "Poshan Abhiyaan": "POSHAN Abhiyaan",
+        "Mid-Day Meal Scheme": "PM POSHAN",
+        "Mid-day Meal": "PM POSHAN",
+        "Midday Meal Scheme": "PM POSHAN",
+        "Anemia Mukt Bharat": "Anaemia Mukt Bharat",
+        "Anaemia Mukt Bharat Abhiyan": "Anaemia Mukt Bharat",
+        "Integrated Child Development Services Scheme (ICDS)": "Integrated Child Development Services (ICDS)",
+        "ICDS Scheme": "Integrated Child Development Services (ICDS)",
+        "Poshan Abhiyan Gujarat": "POSHAN Abhiyan Gujarat",
+        "POSHAN Abhiyan": "POSHAN Abhiyaan",
+    }
+    merged = 0
+    deleted = 0
+    try:
+        conn = _conn()
+        cur = conn.cursor()
+        for wrong_name, correct_name in canonical.items():
+            # Check if correct version exists
+            cur.execute("SELECT id FROM programs WHERE program_name = %s LIMIT 1", (correct_name,))
+            correct = cur.fetchone()
+            cur.execute("SELECT id FROM programs WHERE program_name = %s", (wrong_name,))
+            wrong = cur.fetchall()
+            if wrong:
+                if correct:
+                    # Delete the duplicate
+                    cur.execute("DELETE FROM programs WHERE program_name = %s", (wrong_name,))
+                    deleted += cur.rowcount
+                else:
+                    # Rename to correct name
+                    cur.execute("UPDATE programs SET program_name = %s WHERE program_name = %s",
+                               (correct_name, wrong_name))
+                    merged += cur.rowcount
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"merged": merged, "deleted": deleted})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 @app.route("/api/cleanup", methods=["POST"])
 def cleanup():
     secret = request.headers.get("X-Scrape-Secret", "")
