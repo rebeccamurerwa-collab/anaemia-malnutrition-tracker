@@ -11,6 +11,8 @@ CORS(app)
 
 # ── DB init ──────────────────────────────────────────────────────────────────
 init_db()
+except Exception as e:
+    print(f"[startup] DB init warning: {e}")
 
 # ── Scheduler (weekly) ───────────────────────────────────────────────────────
 start_scheduler()
