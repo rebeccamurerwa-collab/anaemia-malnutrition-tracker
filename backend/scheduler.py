@@ -32,7 +32,7 @@ def start_scheduler():
     # Every Monday at 06:00 UTC
     scheduler.add_job(
         weekly_job,
-        CronTrigger(day_of_week="mon", hour=6, minute=0),
+        CronTrigger(day_of_week="mon", hour=3, minute=0),
         id="weekly_scrape",
         replace_existing=True,
     )
